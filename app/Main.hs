@@ -1,7 +1,9 @@
 module Main where
 
+import Data.Char
+import Control.Monad
 import Numeric
-import Text.ParserCombinators.Parsec hiding (spaces)
+import Text.ParserCombinators.Parsec hiding (spaces1)
 import System.Environment
 import Data.Ratio
 import Data.Complex
@@ -17,6 +19,7 @@ toDouble :: LispVal -> Double
 toDouble (Float f) = realToFrac f
 toDouble (Number n) = fromIntegral n
 
+
 data LispVal = Atom String
   | List [LispVal]
   | DottedList [LispVal] LispVal
@@ -28,6 +31,35 @@ data LispVal = Atom String
   | Ratio Rational
   | Complex (Complex Double)
   | Vector (Array Int LispVal)
+  deriving (Eq, Show)
+
+parseExpr :: Parser LispVal
+parseExpr = try parseBool
+  <|> parseString
+  <|> parseVector
+  <|> parseAtom
+  <|> parseCharacter
+  <|> try parseComplex
+  <|> try parseFloat
+  <|> try parseRatio
+  <|> parseNumber
+  <|> parseQuoted
+  <|> parseQuasiQuoted
+  <|> parseUnQuote
+  <|> parseUnQuoteSplicing
+  <|> do char '('
+         x <- try parseList <|> parseDottedList
+         char ')'
+         return x
+
+readExpr :: String -> String
+readExpr input = case parse parseExpr "lisp" input of
+                   Left err -> "No match: " ++ show err
+                   Right val -> "Found " ++ show val
+main :: IO ()
+main = do
+  (expr: _) <- getArgs
+  putStrLn (readExpr expr)
 
 escapeChars :: Parser Char
 escapeChars = do
@@ -123,6 +155,16 @@ parseBool = do
   char '#'
   (char 't' >> return (Bool True)) <|> (char 'f' >> return (Bool False))
 
+parseAllTheLists :: Parser LispVal
+parseAllTheLists = do
+  char '(' >> spaces
+  head <- sepEndBy parseExpr spaces1
+  do char '.' >> spaces1
+     tail <- parseExpr
+     spaces >> char ')'
+     return $ DottedList head tail
+     <|> (spaces >> char ')' >> return (List head))
+
 parseList :: Parser LispVal
 parseList = between beg end parseList1
   where beg = char '(' >> skipMany space
@@ -169,41 +211,17 @@ parseUnQuoteSplicing = do
 
 parseVector :: Parser LispVal
 parseVector = do
-  arrayValues <- sepBy parseExpr spaces
-  return $ Vector (listArray (0, length arrayValues -1) arrayValues)
-
-parseExpr :: Parser LispVal
-parseExpr = parseAtom
-  <|> parseString
-  <|> try parseRatio
-  <|> try parseComplex
-  <|> parseFloat
-  <|> parseNumber
-  <|> parseQuoted
-  <|> parseQuasiQuoted
-  <|> parseUnQuote
-  <|> parseUnQuoteSplicing
-  <|> parseBool
-  <|> try parseCharacter
-  <|> try (do string "#("
-              x <- parseVector
-              char ')'
-              return x)
-  <|> do char '('
-         x <- try parseList <|> parseDottedList
-         char ')'
-         return x
+  string "#("
+  elems <- sepBy parseExpr spaces1
+  char ')'
+  return $ Vector (listArray (0, length elems -1) elems)
 
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
-readExpr :: String -> String
-readExpr input = case parse parseExpr "lisp" input of
-                   Left err -> "No match: " ++ show err
-                   Right val -> "Found value"
 
-spaces :: Parser ()
-spaces = skipMany1 space
+spaces1 :: Parser ()
+spaces1 = skipMany1 space
 
 showVal :: LispVal -> String
 showVal (String contents) = "\"" ++ contents ++ "\""
@@ -217,7 +235,3 @@ showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tai
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
 
-main :: IO ()
-main = do
-  (expr: _) <- getArgs
-  putStrLn (readExpr expr)
