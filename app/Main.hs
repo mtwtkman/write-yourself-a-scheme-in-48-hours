@@ -23,14 +23,14 @@ toDouble (Number n) = fromIntegral n
 data LispVal = Atom String
   | List [LispVal]
   | DottedList [LispVal] LispVal
+  | Vector (Array Int LispVal)
   | Number Integer
+  | Float Double
+  | Complex (Complex Double)
+  | Ratio Rational
   | String String
   | Bool Bool
   | Character Char
-  | Float Double
-  | Ratio Rational
-  | Complex (Complex Double)
-  | Vector (Array Int LispVal)
   deriving (Eq, Show)
 
 parseExpr :: Parser LispVal
@@ -47,19 +47,16 @@ parseExpr = try parseBool
   <|> parseQuasiQuoted
   <|> parseUnQuote
   <|> parseUnQuoteSplicing
-  <|> do char '('
-         x <- try parseList <|> parseDottedList
-         char ')'
-         return x
+  <|> parseAllTheLists
 
-readExpr :: String -> String
+readExpr :: String -> LispVal
 readExpr input = case parse parseExpr "lisp" input of
-                   Left err -> "No match: " ++ show err
-                   Right val -> "Found " ++ show val
+                   Left err -> String $ "No match: " ++ show err
+                   Right val -> val
 main :: IO ()
 main = do
   (expr: _) <- getArgs
-  putStrLn (readExpr expr)
+  print (readExpr expr)
 
 escapeChars :: Parser Char
 escapeChars = do
@@ -165,18 +162,6 @@ parseAllTheLists = do
      return $ DottedList head tail
      <|> (spaces >> char ')' >> return (List head))
 
-parseList :: Parser LispVal
-parseList = between beg end parseList1
-  where beg = char '(' >> skipMany space
-        end = skipMany space >> char ')'
-
-parseList1 :: Parser LispVal
-parseList1 = do
-  list <- sepEndBy parseExpr spaces
-  maybeDatum <- optionMaybe (char '.' >> spaces >> parseExpr)
-  return $ case maybeDatum of
-             Nothing -> List list
-             Just datum -> DottedList list datum
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
