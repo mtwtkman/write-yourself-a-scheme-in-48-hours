@@ -19,7 +19,7 @@ tests :: TestTree
 tests = testGroup "Tests" [properties]
 
 properties :: TestTree
-properties = testGroup "Props" [prop]
+properties = testGroup "Scheme" [prop_parser]
 
 data Operator = Plus | Sub | Mul | Div deriving (Generic)
 instance Show Operator where
@@ -44,7 +44,7 @@ toLispVal e = case e of
                 XList xs -> List [Number (getNonNegative x) | x <- xs]
                 XSimple n -> Number (getNonNegative n)
 
-prop = testGroup "Scheme"
+prop_parser = testGroup "parser"
   [ SC.testProperty "parsing a number number" $
       \x ->
         let val = getNonNegative (x :: NonNegative Integer)
