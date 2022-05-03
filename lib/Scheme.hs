@@ -31,7 +31,9 @@ data LispVal = Atom String
   | String String
   | Bool Bool
   | Character Char
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show LispVal where show = showVal
 
 parseExpr :: Parser LispVal
 parseExpr = try parseBool
