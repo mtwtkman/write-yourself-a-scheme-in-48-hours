@@ -175,7 +175,7 @@ parseQuasiQuoted :: Parser LispVal
 parseQuasiQuoted = do
   char '`'
   x <- parseExpr
-  return $ List [Atom "qualiauote", x]
+  return $ List [Atom "quasiquote", x]
 
 parseUnQuote :: Parser LispVal
 parseUnQuote = do

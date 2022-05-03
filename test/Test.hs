@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
 import Data.Ratio
@@ -9,6 +10,7 @@ import Test.Tasty.SmallCheck as SC
 import Test.SmallCheck
 import Test.SmallCheck.Series
 import Scheme
+import GHC.Generics
 
 main = defaultMain tests
 
@@ -17,6 +19,15 @@ tests = testGroup "Tests" [properties]
 
 properties :: TestTree
 properties = testGroup "Props" [prop]
+
+data Operator = Plus | Sub | Mul | Div deriving (Generic)
+instance Show Operator where
+  show s = case s of
+             Plus -> "+"
+             Sub -> "-"
+             Mul -> "*"
+             Div -> "%"
+instance Monad m => Serial m Operator where
 
 prop = testGroup "MyScheme works fine"
   [ SC.testProperty "parsing a number number" $
@@ -47,4 +58,14 @@ prop = testGroup "MyScheme works fine"
             fld [x] = DottedList [Number x] (Atom "nil")
             fld (h:rs) = DottedList [Number h] (fld rs)
         in readExpr vs == fld ns
+  , SC.testProperty "parsing quasiquoted expr" $
+      \(x, a, b, c, d) ->
+        let a' = getNonNegative (a :: NonNegative Integer)
+            b' = getNonNegative (b :: NonNegative Integer)
+            c' = getNonNegative (c :: NonNegative Integer)
+            d' = getNonNegative (d :: NonNegative Integer)
+            op = show (x :: Operator)
+            v = "`(" ++ show a' ++ " " ++ show b' ++ " ,(" ++ op ++ " " ++ show c' ++ " " ++ show d' ++ "))"
+            expected = List [Atom "quasiquote",List [Number a',Number b',List [Atom "unquote", List [Atom op,Number c',Number d']]]]
+        in readExpr v == expected
   ]
