@@ -21,9 +21,11 @@ library
     exposed-modules: Scheme
 
 test-suite test
-    type: exitcode-stdio-1.0
-    main-is: Test.hs
-    hs-source-dirs: test
-    build-depends:  base
-                   , HUnit
-                   , Scheme
+    type:            exitcode-stdio-1.0
+    main-is:         Test.hs
+    hs-source-dirs:  test
+    build-depends:   base
+                   , tasty
+                   , tasty-smallcheck
+                   , smallcheck
+                   , study
