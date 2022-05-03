@@ -29,3 +29,4 @@ test-suite test
                    , tasty-smallcheck
                    , smallcheck
                    , study
+                   , array

@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Main where
 
+import Data.Array
 import Data.Ratio
 import Data.Complex
 import Data.List
@@ -27,9 +28,23 @@ instance Show Operator where
              Sub -> "-"
              Mul -> "*"
              Div -> "%"
-instance Monad m => Serial m Operator where
+instance Monad m => Serial m Operator
 
-prop = testGroup "MyScheme works fine"
+data ExprExample = XString String | XList [NonNegative Integer] | XSimple (NonNegative Integer) deriving (Generic)
+instance Show ExprExample where
+  show s = case s of
+             XString str -> "\"" ++ str ++ "\""
+             XList xs -> "(" ++ unwords (map (show . getNonNegative) xs) ++ ")"
+             XSimple n -> show (getNonNegative n)
+instance Monad m => Serial m ExprExample
+
+toLispVal :: ExprExample -> LispVal
+toLispVal e = case e of
+                XString s -> String s
+                XList xs -> List [Number (getNonNegative x) | x <- xs]
+                XSimple n -> Number (getNonNegative n)
+
+prop = testGroup "Scheme"
   [ SC.testProperty "parsing a number number" $
       \x ->
         let val = getNonNegative (x :: NonNegative Integer)
@@ -68,4 +83,10 @@ prop = testGroup "MyScheme works fine"
             v = "`(" ++ show a' ++ " " ++ show b' ++ " ,(" ++ op ++ " " ++ show c' ++ " " ++ show d' ++ "))"
             expected = List [Atom "quasiquote",List [Number a',Number b',List [Atom "unquote", List [Atom op,Number c',Number d']]]]
         in readExpr v == expected
+  , SC.testProperty "parsing a vector" $
+      \xs ->
+        let vs = getNonEmpty (xs :: NonEmpty ExprExample)
+            s = "#(" ++ unwords (map show vs) ++ ")"
+            expected = Vector  (array (0,length vs - 1) (zip [0..] (map toLispVal vs)))
+        in readExpr s == expected
   ]
