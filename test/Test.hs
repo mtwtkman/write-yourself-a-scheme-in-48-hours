@@ -73,7 +73,7 @@ prop_parser = testGroup "parser"
             fld [x] = DottedList [Number x] (Atom "nil")
             fld (h:rs) = DottedList [Number h] (fld rs)
         in readExpr vs == fld ns
-  , SC.testProperty "parsing quasiquoted expr" $
+  , SC.testProperty "parsing a quasiquoted expr" $
       \(x, a, b, c, d) ->
         let a' = getNonNegative (a :: NonNegative Integer)
             b' = getNonNegative (b :: NonNegative Integer)
@@ -89,4 +89,8 @@ prop_parser = testGroup "parser"
             s = "#(" ++ unwords (map show vs) ++ ")"
             expected = Vector  (array (0,length vs - 1) (zip [0..] (map toLispVal vs)))
         in readExpr s == expected
+  , SC.testProperty "parsing a quoted expr" $
+      \x ->
+        let v = getNonNegative (x :: NonNegative Integer)
+        in readExpr ("'" ++ show v) == List [Atom "quote",Number v]
   ]
