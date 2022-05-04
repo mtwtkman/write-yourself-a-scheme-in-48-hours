@@ -19,9 +19,11 @@ tests :: TestTree
 tests = testGroup "Tests" [properties]
 
 properties :: TestTree
-properties = testGroup "Scheme" [prop_parser]
+properties = testGroup "Scheme" [ prop_parser
+                                , prop_eval
+                                ]
 
-data Operator = Plus
+data BinaryOperator = Plus
               | Sub
               | Mul
               | Div
@@ -29,7 +31,7 @@ data Operator = Plus
               | Quot
               | Rem
               deriving (Generic)
-instance Show Operator where
+instance Show BinaryOperator where
   show s = case s of
              Plus -> "+"
              Sub -> "-"
@@ -38,7 +40,18 @@ instance Show Operator where
              Mod -> "mod"
              Quot -> "quotient"
              Rem -> "remainder"
-instance Monad m => Serial m Operator
+instance Monad m => Serial m BinaryOperator
+
+toHaskellBinaryOperator :: BinaryOperator -> (Integer -> Integer -> Integer)
+toHaskellBinaryOperator op = case op of
+                               Plus -> (+)
+                               Sub -> (-)
+                               Mul -> (*)
+                               Div -> div
+                               Mod -> mod
+                               Quot -> quot
+                               Rem -> rem
+
 
 data ExprExample = XString String | XList [NonNegative Integer] | XSimple (NonNegative Integer) deriving (Generic)
 instance Show ExprExample where
@@ -89,7 +102,7 @@ prop_parser = testGroup "parser"
             b' = getNonNegative (b :: NonNegative Integer)
             c' = getNonNegative (c :: NonNegative Integer)
             d' = getNonNegative (d :: NonNegative Integer)
-            op = show (x :: Operator)
+            op = show (x :: BinaryOperator)
             v = "`(" ++ show a' ++ " " ++ show b' ++ " ,(" ++ op ++ " " ++ show c' ++ " " ++ show d' ++ "))"
             expected = List [Atom "quasiquote",List [Number a',Number b',List [Atom "unquote", List [Atom op,Number c',Number d']]]]
         in readExpr v == expected
@@ -105,8 +118,11 @@ prop_parser = testGroup "parser"
         in readExpr ("'" ++ show v) == List [Atom "quote",Number v]
   ]
 
--- prop_eval = testGroup "eval"
---   [ SC.testProperty "evaluates binary operator" $
---       \op a b ->
---         let biop =
---   ]
+prop_eval = testGroup "eval"
+  [ SC.testProperty "evaluates binary operator" $
+      \op a b ->
+        let op' = Atom $ show (op :: BinaryOperator)
+            a' = getPositive (a :: Positive Integer)
+            b' = getPositive (b :: Positive Integer)
+         in eval (List [op',Number a',Number b']) == Number (toHaskellBinaryOperator op a' b')
+  ]
