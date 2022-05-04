@@ -125,4 +125,17 @@ prop_eval = testGroup "eval"
             a' = getPositive (a :: Positive Integer)
             b' = getPositive (b :: Positive Integer)
          in eval (List [op',Number a',Number b']) == Number (toHaskellBinaryOperator op a' b')
+  , SC.testProperty "evaluates string" $
+      \x ->
+        eval (String (x :: String)) == String x
+  , SC.testProperty "evaluates number" $
+      \x ->
+        let v = getNonNegative (x :: NonNegative Integer)
+        in eval (Number v) == Number v
+  , SC.testProperty "evaluates bool" $
+      \x ->
+        eval (Bool (x :: Bool)) == Bool x
+  , SC.testProperty "evaluates quote" $
+      \x ->
+        eval (List [Atom "quote",String (x :: String)]) == String x
   ]
