@@ -94,3 +94,6 @@ prop_parser = testGroup "parser"
         let v = getNonNegative (x :: NonNegative Integer)
         in readExpr ("'" ++ show v) == List [Atom "quote",Number v]
   ]
+
+prop_eval = testGroup "eval"
+  []
