@@ -1,5 +1,6 @@
 module Scheme (LispVal (..), readExpr, eval, extractValue, trapError) where
 
+import Data.Functor
 import Data.Char
 import Control.Monad
 import Control.Monad.Except
@@ -78,7 +79,7 @@ parseExpr = try parseBool
 
 readExpr :: String -> ThrowsError LispVal
 readExpr input = case parse parseExpr "lisp" input of
-                   Left err -> throwError $Parser err
+                   Left err -> throwError $ Parser err
                    Right val -> return val
 
 escapeChars :: Parser Char
@@ -276,7 +277,7 @@ primitives = [ ("+", numericBinop (+))
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
 numericBinop op [] = throwError $ NumArgs 2 []
 numericBinop op singleVal@[_] = throwError $ NumArgs 2 singleVal
-numericBinop op params = mapM unpackNum params >>= return .Number . foldl1 op
+numericBinop op params = mapM unpackNum params <&> (Number . foldl1 op)
 
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n
