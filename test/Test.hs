@@ -138,4 +138,10 @@ prop_eval = testGroup "eval"
   , SC.testProperty "evaluates quote" $
       \x ->
         eval (List [Atom "quote",String (x :: String)]) == Right (String x)
+  , SC.testProperty "evaluates if expression" $
+      \x ->
+        let truthy = String "true"
+            falsy = String "false"
+            expected = if (x :: Bool) then truthy  else falsy
+         in eval (List [Atom "if",Bool x,truthy,falsy]) == Right expected
   ]

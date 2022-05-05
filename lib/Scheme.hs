@@ -249,6 +249,11 @@ eval val@(String _) = return val
 eval val@(Number _) = return val
 eval val@(Bool _) = return val
 eval (List [Atom "quote",val]) = return val
+eval (List [Atom "if",pred,conseq,alt]) =
+                     do result <- eval pred
+                        case result of
+                          Bool False -> eval alt
+                          _ -> eval conseq
 eval (List (Atom func : args)) = mapM eval args >>= apply func
 eval badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
 
@@ -272,6 +277,19 @@ primitives = [ ("+", numericBinop (+))
              , ("list?", unaryOp listp)
              , ("symbol->string", unaryOp symbol2string)
              , ("string->symbol", unaryOp string2symbol)
+             , ("=", numBoolBinop (==))
+             , ("<", numBoolBinop (<))
+             , (">", numBoolBinop (>))
+             , ("/=", numBoolBinop (/=))
+             , (">=", numBoolBinop (>=))
+             , ("<=", numBoolBinop (<=))
+             , ("&&", boolBoolBinop (&&))
+             , ("||", boolBoolBinop (||))
+             , ("string=?", strBoolBinop (==))
+             , ("string<?", strBoolBinop (<))
+             , ("string>?", strBoolBinop (>))
+             , ("string<=?", strBoolBinop (<=))
+             , ("string>=?", strBoolBinop (>=))
              ]
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
@@ -314,3 +332,23 @@ string2symbol s = throwError $ TypeMismatch "string" s
 
 symbol2string (Atom s) = return $ String s
 symbol2string s = throwError $ TypeMismatch "symbol" s
+
+boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] -> ThrowsError LispVal
+boolBinop unpacker op args = if length args /= 2
+                                then throwError $ NumArgs 2 args
+                                else do left <- unpacker $ head args
+                                        right <- unpacker $ args !! 1
+                                        return $ Bool $ left `op` right
+numBoolBinop = boolBinop unpackNum
+strBoolBinop = boolBinop unpackStr
+boolBoolBinop = boolBinop unpackBool
+
+unpackStr :: LispVal -> ThrowsError String
+unpackStr (String s) = return s
+unpackStr (Number s) = return $ show s
+unpackStr (Bool s) = return $ show s
+unpackStr notString = throwError $ TypeMismatch "string" notString
+
+unpackBool :: LispVal -> ThrowsError Bool
+unpackBool (Bool b) = return b
+unpackBool notBool = throwError $ TypeMismatch "boolean" notBool
